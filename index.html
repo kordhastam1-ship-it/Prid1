@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>رانندگی سه‌بعدی</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#9cc9e8;font-family:Tahoma,Arial}
+#game{position:fixed;inset:0}canvas{display:block}
+#hud{position:fixed;top:12px;right:12px;color:#fff;background:#101820bb;padding:10px 14px;border-radius:12px;font-size:14px;z-index:2}
+#speed{font-size:24px;font-weight:bold}
+#help{position:fixed;top:12px;left:12px;background:#101820bb;color:#fff;padding:9px 12px;border-radius:10px;font-size:12px;z-index:2}
+#status{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#101820dd;color:white;padding:14px 18px;border-radius:12px;z-index:3;text-align:center;max-width:85%;line-height:1.8}
+#controls{position:fixed;bottom:18px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:end;z-index:4;pointer-events:none}
+.pad{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px;gap:5px;pointer-events:auto}
+.btn{border:1px solid #ffffff88;background:#17232dcc;color:white;border-radius:14px;font-size:22px;touch-action:none;user-select:none}
+.btn:active{background:#3978a8}
+#gas{width:70px;height:70px;border-radius:50%;font-size:15px;background:#167a43dd}
+#brake{width:64px;height:64px;border-radius:50%;font-size:14px;background:#a52b2bdd;margin-left:8px}
+.actions{display:flex;align-items:end;pointer-events:auto}
+@media (min-width:800px){#controls{opacity:.75}.pad{grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud"><div>سرعت</div><div><span id="speed">۰</span> KM/H</div></div>
+<div id="help">حرکت: کلیدهای جهت‌دار یا WASD<br>گاز و ترمز: دکمه‌های پایین</div>
+<div id="status">در حال بارگذاری ماشین...</div>
+<div id="controls">
+  <div class="pad">
+    <span></span><button class="btn" data-key="ArrowUp">▲</button><span></span>
+    <button class="btn" data-key="ArrowLeft">◀</button><button class="btn" data-key="ArrowDown">▼</button><button class="btn" data-key="ArrowRight">▶</button>
+  </div>
+  <div class="actions">
+    <button class="btn" id="brake" data-key="Space">ترمز</button>
+    <button class="btn" id="gas" data-key="ArrowUp">گاز</button>
+  </div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const holder=document.getElementById('game'), status=document.getElementById('status');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9cc9e8); scene.fog=new THREE.Fog(0x9cc9e8,45,150);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping;
+holder.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x53616c,2));
+const sun=new THREE.DirectionalLight(0xffffff,2.4); sun.position.set(-15,25,12); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); scene.add(sun);
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({color:0x477d43,roughness:1}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+const road=new THREE.Mesh(new THREE.PlaneGeometry(12,500),new THREE.MeshStandardMaterial({color:0x30343a,roughness:.95}));
+road.rotation.x=-Math.PI/2; road.position.y=.015; scene.add(road);
+for(let z=-240;z<250;z+=12){
+ const dash=new THREE.Mesh(new THREE.PlaneGeometry(.18,6),new THREE.MeshBasicMaterial({color:0xffffff}));
+ dash.rotation.x=-Math.PI/2; dash.position.set(0,.03,z); scene.add(dash);
+}
+for(let i=-12;i<=12;i++){
+ for(let z=-220;z<=220;z+=35){
+  if(Math.abs(i)<2) continue;
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.18,1.5,7),new THREE.MeshStandardMaterial({color:0x65452c}));
+  trunk.position.set(i*9,.75,z+(i%2)*12); scene.add(trunk);
+  const crown=new THREE.Mesh(new THREE.SphereGeometry(1.15,10,8),new THREE.MeshStandardMaterial({color:0x2f7138}));
+  crown.position.set(i*9,2.2,z+(i%2)*12); crown.scale.y=1.1; crown.castShadow=true; scene.add(crown);
+ }
+}
+
+let car=null, wheels=[], speed=0, steer=0;
+const keys={};
+function setKey(k,v){keys[k]=v}
+addEventListener('keydown',e=>{setKey(e.code,true); if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()},{passive:false});
+addEventListener('keyup',e=>setKey(e.code,false));
+document.querySelectorAll('[data-key]').forEach(b=>{
+ const k=b.dataset.key;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);setKey(k,true)});
+ const release=e=>{e.preventDefault();setKey(k,false)};
+ b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('lostpointercapture',release);
+});
+
+new GLTFLoader().load('./car.glb',g=>{
+ car=g.scene;
+ const box=new THREE.Box3().setFromObject(car), size=box.getSize(new THREE.Vector3()), center=box.getCenter(new THREE.Vector3());
+ const maxDim=Math.max(size.x,size.y,size.z);
+ const scale=4.6/(maxDim||1); car.scale.setScalar(scale);
+ car.position.sub(center.multiplyScalar(scale));
+ const scaledBox=new THREE.Box3().setFromObject(car);
+ car.position.y-=scaledBox.min.y;
+ // Place the model on the road; orient it along the road if its long axis is X.
+ const dims=new THREE.Box3().setFromObject(car).getSize(new THREE.Vector3());
+ if(dims.x>dims.z) car.rotation.y=-Math.PI/2;
+ car.traverse(o=>{
+   if(o.isMesh){o.castShadow=true;o.receiveShadow=true;
+     const n=(o.name||'').toLowerCase();
+     if(/wheel|tire|tyre|چرخ/.test(n)) wheels.push(o);
+   }
+ });
+ scene.add(car);
+ status.innerHTML='ماشین بارگذاری شد!<br>برای حرکت از دکمه گاز یا کلیدهای جهت‌دار استفاده کن.';
+ setTimeout(()=>status.style.display='none',2600);
+},undefined,err=>{
+ console.error(err); status.innerHTML='بارگذاری مدل ناموفق بود.<br>مطمئن شو فایل car.glb کنار index.html قرار دارد و اینترنت وصل است.';
+});
+
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate); const dt=Math.min(clock.getDelta(),.04);
+ if(car){
+  const forward=keys.ArrowUp||keys.KeyW, back=keys.ArrowDown||keys.KeyS;
+  const left=keys.ArrowLeft||keys.KeyA, right=keys.ArrowRight||keys.KeyD;
+  if(forward) speed=Math.min(speed+7*dt,22);
+  else if(back||keys.Space) speed=Math.max(speed-13*dt,-5);
+  else speed*=Math.pow(.985,dt*60);
+  const target=(left?1:0)-(right?1:0);
+  steer=THREE.MathUtils.lerp(steer,target,Math.min(1,dt*5));
+  car.rotation.y += steer*speed*.018*dt;
+  car.position.x += Math.sin(car.rotation.y)*speed*dt;
+  car.position.z += Math.cos(car.rotation.y)*speed*dt;
+  wheels.forEach(w=>{w.rotation.x+=(speed*dt)/.35});
+  document.getElementById('speed').textContent=Math.round(Math.abs(speed)*3.6).toLocaleString('fa-IR');
+  const behind=new THREE.Vector3(0,3.2,-7.8).applyAxisAngle(new THREE.Vector3(0,1,0),car.rotation.y);
+  const targetCam=car.position.clone().add(behind);
+  camera.position.lerp(targetCam,1-Math.pow(.001,dt));
+  camera.lookAt(car.position.clone().add(new THREE.Vector3(0,1,0)));
+ } else {camera.position.set(0,5,10);camera.lookAt(0,0,0)}
+ renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
