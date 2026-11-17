@@ -3,32 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>رانندگی در تهران 3D</title>
+<title>رانندگی آزاد در تهران 3D</title>
 
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#a9cbe4;font-family:Tahoma}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#a9cbe4;font-family:Tahoma,Arial}
 #game{position:fixed;inset:0}
 canvas{display:block}
 
 #hud{
 position:fixed;top:12px;right:12px;
 background:#101820dd;color:white;
-padding:12px;border-radius:12px;z-index:5
+padding:12px 17px;border-radius:14px;z-index:5;
 }
-#speed{font-size:27px;font-weight:bold}
+#speed{font-size:28px;font-weight:bold}
 
 #help{
 position:fixed;top:12px;left:12px;
 background:#101820dd;color:white;
-padding:10px;border-radius:10px;z-index:5;font-size:12px
+padding:10px;border-radius:12px;
+font-size:12px;z-index:5;line-height:1.8
 }
 
 #status{
 position:fixed;top:50%;left:50%;
 transform:translate(-50%,-50%);
 background:#101820ed;color:white;
-padding:16px;border-radius:12px;
+padding:15px 20px;border-radius:14px;
 z-index:10;text-align:center;line-height:2
 }
 
@@ -37,25 +38,65 @@ position:fixed;bottom:18px;left:15px;right:15px;
 display:flex;justify-content:space-between;
 align-items:end;z-index:6;pointer-events:none
 }
-.pad{
-display:grid;
-grid-template-columns:55px 55px 55px;
-grid-template-rows:55px 55px;gap:5px;
-pointer-events:auto
+
+#steering{
+width:130px;height:130px;border-radius:50%;
+background:#111d2cdd;border:7px solid #aaa;
+display:flex;align-items:center;justify-content:center;
+pointer-events:auto;touch-action:none;
 }
+
+#wheel{
+width:110px;height:110px;border-radius:50%;
+border:12px solid #ddd;position:relative;
+display:flex;align-items:center;justify-content:center;
+touch-action:none;
+}
+
+#wheel:before{
+content:"";position:absolute;width:12px;height:42px;
+background:#ddd;top:0;left:37px;border-radius:8px
+}
+
+.wheel-center{
+background:#222;width:40px;height:40px;
+border-radius:50%;display:flex;
+align-items:center;justify-content:center
+}
+
+.actions{
+display:flex;gap:7px;align-items:end;
+pointer-events:auto;flex-wrap:wrap;
+justify-content:flex-end
+}
+
 .btn{
 background:#17232ddd;color:white;
 border:1px solid #ffffff88;
-border-radius:13px;font-size:22px;
-touch-action:none;user-select:none
+border-radius:13px;font-size:14px;
+padding:12px;touch-action:none;user-select:none;
 }
-.actions{display:flex;gap:8px;pointer-events:auto}
-#gas,#brake{
-width:68px;height:68px;border-radius:50%;
-font-size:15px
+
+#gas{
+background:#128b45;width:72px;height:72px;
+border-radius:50%;font-weight:bold
 }
-#gas{background:#167a43}
-#brake{background:#a52b2b}
+
+#brake{
+background:#b32929;width:65px;height:65px;
+border-radius:50%
+}
+
+#cameraBtn{background:#245b8b}
+
+@media(max-width:450px){
+#steering{width:105px;height:105px}
+#wheel{width:88px;height:88px}
+#wheel:before{left:26px;height:35px}
+#controls{bottom:12px}
+.btn{padding:9px}
+#help{font-size:10px}
+}
 </style>
 </head>
 
@@ -64,39 +105,40 @@ font-size:15px
 <div id="game"></div>
 
 <div id="hud">
-سرعت
+سرعت خودرو
 <div><span id="speed">۰</span> KM/H</div>
 </div>
 
 <div id="help">
-رانندگی در تهران 🏙️<br>
-حرکت با دکمه‌ها
+🏙️ تهران بزرگ<br>
+رانندگی آزاد<br>
+📍 شهر تهران
 </div>
 
 <div id="status">در حال ساخت شهر تهران...</div>
 
 <div id="controls">
-<div class="pad">
-<span></span>
-<button class="btn" data-key="ArrowUp">▲</button>
-<span></span>
-<button class="btn" data-key="ArrowLeft">◀</button>
-<button class="btn" data-key="ArrowDown">▼</button>
-<button class="btn" data-key="ArrowRight">▶</button>
+
+<div id="steering">
+<div id="wheel">
+<div class="wheel-center">🚗</div>
+</div>
 </div>
 
 <div class="actions">
-<button class="btn" id="brake" data-key="Space">ترمز</button>
-<button class="btn" id="gas" data-key="ArrowUp">گاز</button>
+<button class="btn" id="cameraBtn">📷 دوربین ۱</button>
+<button class="btn" id="brake">ترمز</button>
+<button class="btn" id="gas">گاز</button>
 </div>
+
 </div>
 
 <script type="importmap">
 {
- "imports":{
-  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
- }
+"imports":{
+"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}
 }
 </script>
 
@@ -111,15 +153,21 @@ try{
 const THREE=await import("three");
 const {GLTFLoader}=await import("three/addons/loaders/GLTFLoader.js");
 
+// ---------------- SCENE ----------------
+
 const scene=new THREE.Scene();
+
 scene.background=new THREE.Color(0xa9cbe4);
-scene.fog=new THREE.Fog(0xa9cbe4,100,350);
+scene.fog=new THREE.Fog(0xa9cbe4,300,1500);
 
 const camera=new THREE.PerspectiveCamera(
-60,innerWidth/innerHeight,.1,1000
+65,innerWidth/innerHeight,.1,3000
 );
 
-const renderer=new THREE.WebGLRenderer({antialias:true});
+const renderer=new THREE.WebGLRenderer({
+antialias:true
+});
+
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.shadowMap.enabled=true;
@@ -127,206 +175,394 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 
 document.getElementById("game").appendChild(renderer.domElement);
 
+// نورپردازی
+
 scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2));
 
-const sun=new THREE.DirectionalLight(0xffffff,2);
-sun.position.set(-30,60,30);
+const sun=new THREE.DirectionalLight(0xffffff,2.2);
+sun.position.set(-100,150,80);
 sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);
 scene.add(sun);
 
-function material(color){
-return new THREE.MeshStandardMaterial({color,roughness:.85});
+function mat(color){
+return new THREE.MeshStandardMaterial({
+color,roughness:.9
+});
 }
 
-// زمین
+// ---------------- GROUND ----------------
+
 const ground=new THREE.Mesh(
-new THREE.PlaneGeometry(1000,1000),
-material(0x829879)
+new THREE.PlaneGeometry(3000,3000),
+mat(0x839578)
 );
+
 ground.rotation.x=-Math.PI/2;
-ground.position.y=-.1;
+ground.position.y=-.15;
+ground.receiveShadow=true;
 scene.add(ground);
 
-// خیابان اصلی
+// ---------------- CITY ROADS ----------------
+
+const CITY=2400;
+const STEP=120;
+const ROAD=24;
+
+// خیابان‌های شمالی جنوبی
+
+for(let x=-CITY/2;x<=CITY/2;x+=STEP){
+
 const road=new THREE.Mesh(
-new THREE.PlaneGeometry(20,1000),
-material(0x303238)
+new THREE.PlaneGeometry(ROAD,CITY),
+mat(0x303238)
 );
+
 road.rotation.x=-Math.PI/2;
+road.position.set(x,.01,0);
 scene.add(road);
 
-// پیاده‌رو
-for(const x of [-11.5,11.5]){
-const sidewalk=new THREE.Mesh(
-new THREE.PlaneGeometry(3,1000),
-material(0xbab5a8)
-);
-sidewalk.rotation.x=-Math.PI/2;
-sidewalk.position.set(x,.03,0);
-scene.add(sidewalk);
-}
-
-// خط‌کشی خیابان
-for(let z=-490;z<500;z+=14){
-const line=new THREE.Mesh(
-new THREE.PlaneGeometry(.22,7),
-new THREE.MeshBasicMaterial({color:0xffffff})
-);
-line.rotation.x=-Math.PI/2;
-line.position.set(0,.04,z);
-scene.add(line);
-}
-
-// ساختمان‌های تهران
-const colors=[
-0xc9b99e,0xd8d0c2,0xb8b4aa,
-0xc7c1b5,0xa99e8d,0xd4c4a8
-];
-
-let index=0;
-
-for(let z=-450;z<=450;z+=38){
+// خطوط کناری
 
 for(const side of [-1,1]){
 
-const w=12+(index%3)*3;
-const h=14+(index%5)*5;
-const d=22;
-
-const x=side*(20+w/2);
-
-const building=new THREE.Mesh(
-new THREE.BoxGeometry(w,h,d),
-material(colors[index%colors.length])
+const line=new THREE.Mesh(
+new THREE.PlaneGeometry(.15,CITY),
+new THREE.MeshBasicMaterial({color:0xe7e7df})
 );
 
-building.position.set(x,h/2,z);
-building.castShadow=true;
-scene.add(building);
+line.rotation.x=-Math.PI/2;
+line.position.set(x+side*10,.035,0);
+scene.add(line);
+
+}
+
+}
+
+// خیابان‌های شرقی غربی
+
+for(let z=-CITY/2;z<=CITY/2;z+=STEP){
+
+const road=new THREE.Mesh(
+new THREE.PlaneGeometry(CITY,ROAD),
+mat(0x303238)
+);
+
+road.rotation.x=-Math.PI/2;
+road.position.set(0,.025,z);
+scene.add(road);
+
+}
+
+// خط‌کشی خیابان‌ها
+
+const dashMat=new THREE.MeshBasicMaterial({
+color:0xf0e7c8
+});
+
+for(let x=-CITY/2;x<=CITY/2;x+=STEP){
+
+for(let z=-CITY/2;z<CITY/2;z+=15){
+
+const dash=new THREE.Mesh(
+new THREE.PlaneGeometry(.22,7),
+dashMat
+);
+
+dash.rotation.x=-Math.PI/2;
+dash.position.set(x,.045,z);
+scene.add(dash);
+
+}
+
+}
+
+// ---------------- BUILDINGS ----------------
+
+const colors=[
+0xc9b99e,
+0xd8d0c2,
+0xb8b4aa,
+0xc7c1b5,
+0xa99e8d,
+0xd4c4a8,
+0xaaaeb4
+];
+
+const windowMat=mat(0x354b60);
+
+let buildingIndex=0;
+
+function building(x,z,w,d,h,index){
+
+const body=new THREE.Mesh(
+new THREE.BoxGeometry(w,h,d),
+mat(colors[index%colors.length])
+);
+
+body.position.set(x,h/2,z);
+body.castShadow=true;
+body.receiveShadow=true;
+scene.add(body);
+
+// سقف
+
+const roof=new THREE.Mesh(
+new THREE.BoxGeometry(w+.3,.5,d+.3),
+mat(0x88847c)
+);
+
+roof.position.set(x,h+.2,z);
+scene.add(roof);
 
 // پنجره‌ها
+
 for(let floor=1;floor<h/3;floor++){
+
 for(let col=0;col<3;col++){
 
-const windowMesh=new THREE.Mesh(
-new THREE.BoxGeometry(1.5,1.4,.08),
-material(0x354c60)
+const win=new THREE.Mesh(
+new THREE.BoxGeometry(1.7,1.5,.09),
+windowMat
 );
 
-windowMesh.position.set(
-x-w/2+3+col*3,
+win.position.set(
+x-w/2+3+col*(w-5)/3,
 floor*3,
 z-d/2-.06
 );
 
-scene.add(windowMesh);
+scene.add(win);
 
 }
-}
-
-index++;
 
 }
+
+// ورودی مغازه
+
+const shop=new THREE.Mesh(
+new THREE.BoxGeometry(w*.65,2,.12),
+mat(index%2?0x426d78:0x9c6041)
+);
+
+shop.position.set(x,1,z-d/2-.1);
+scene.add(shop);
+
 }
 
-// چراغ‌های خیابان
-for(let z=-400;z<400;z+=35){
+// ساخت محله‌ها
+
+for(let ix=-10;ix<=9;ix++){
+
+for(let iz=-10;iz<=9;iz++){
+
+const cx=ix*STEP+STEP/2;
+const cz=iz*STEP+STEP/2;
+
+// ساختمان اول
+
+const w1=20+(buildingIndex%3)*5;
+const h1=18+(buildingIndex%7)*7;
+
+building(
+cx-28,
+cz-25,
+w1,30,h1,
+buildingIndex++
+);
+
+// ساختمان دوم
+
+const w2=22+(buildingIndex%4)*5;
+const h2=25+(buildingIndex%9)*8;
+
+building(
+cx+27,
+cz+25,
+w2,30,h2,
+buildingIndex++
+);
+
+}
+
+}
+
+// ---------------- PARKS ----------------
+
+// پارک‌های شهری
+
+for(let ix=-8;ix<=8;ix+=4){
+
+for(let iz=-8;iz<=8;iz+=4){
+
+const x=ix*STEP+60;
+const z=iz*STEP+60;
+
+const park=new THREE.Mesh(
+new THREE.PlaneGeometry(35,35),
+mat(0x43834b)
+);
+
+park.rotation.x=-Math.PI/2;
+park.position.set(x,.04,z);
+scene.add(park);
+
+for(let i=0;i<5;i++){
+
+const tx=x-12+(i%3)*12;
+const tz=z-10+Math.floor(i/3)*18;
+
+const trunk=new THREE.Mesh(
+new THREE.CylinderGeometry(.2,.3,3,8),
+mat(0x70462b)
+);
+
+trunk.position.set(tx,1.5,tz);
+scene.add(trunk);
+
+const leaves=new THREE.Mesh(
+new THREE.SphereGeometry(2,9,8),
+mat(0x26723c)
+);
+
+leaves.position.set(tx,4,tz);
+scene.add(leaves);
+
+}
+
+}
+
+}
+
+// ---------------- STREET LIGHTS ----------------
+
+for(let x=-CITY/2;x<=CITY/2;x+=STEP){
+
+for(let z=-CITY/2;z<=CITY/2;z+=STEP){
 
 for(const side of [-1,1]){
 
 const pole=new THREE.Mesh(
-new THREE.CylinderGeometry(.08,.1,5,8),
-material(0x555555)
+new THREE.CylinderGeometry(.09,.12,5,8),
+mat(0x444444)
 );
 
-pole.position.set(side*10,2.5,z);
+pole.position.set(x+side*16,2.5,z+16);
 scene.add(pole);
 
 const lamp=new THREE.Mesh(
-new THREE.BoxGeometry(.8,.2,.4),
-material(0xffe6a3)
+new THREE.BoxGeometry(1,.2,.5),
+mat(0xffe8a8)
 );
 
-lamp.position.set(side*10,4.8,z);
+lamp.position.set(x+side*16,4.8,z+16);
 scene.add(lamp);
 
 }
+
 }
 
-// درخت‌ها
-for(let z=-400;z<400;z+=45){
+}
 
-for(const side of [-1,1]){
+// ---------------- TRAFFIC LIGHTS ----------------
 
-const trunk=new THREE.Mesh(
-new THREE.CylinderGeometry(.15,.2,2,8),
-material(0x70462b)
+for(let x=-CITY/2;x<=CITY/2;x+=STEP*2){
+
+for(let z=-CITY/2;z<=CITY/2;z+=STEP*2){
+
+const pole=new THREE.Mesh(
+new THREE.CylinderGeometry(.12,.15,5,8),
+mat(0x333333)
 );
 
-trunk.position.set(side*13,1,z);
-scene.add(trunk);
+pole.position.set(x+17,2.5,z+17);
+scene.add(pole);
 
-const leaves=new THREE.Mesh(
-new THREE.SphereGeometry(1.3,10,8),
-material(0x34713a)
+const box=new THREE.Mesh(
+new THREE.BoxGeometry(.7,1.8,.6),
+mat(0x222222)
 );
 
-leaves.position.set(side*13,2.7,z);
-scene.add(leaves);
+box.position.set(x+17,5,z+17);
+scene.add(box);
+
+for(let i=0;i<3;i++){
+
+const light=new THREE.Mesh(
+new THREE.SphereGeometry(.17,10,8),
+mat([0xff2222,0xffcc00,0x22cc44][i])
+);
+
+light.position.set(x+17,5.6-i*.55,z+17.35);
+scene.add(light);
 
 }
+
 }
 
-// ماشین موقت
-function createTemporaryCar(){
+}
+
+// ---------------- CAR ----------------
+
+function temporaryCar(){
 
 const group=new THREE.Group();
 
 const body=new THREE.Mesh(
-new THREE.BoxGeometry(2,0.8,4),
-material(0xc51e35)
+new THREE.BoxGeometry(2,1,4.3),
+mat(0xc51e35)
 );
-body.position.y=.8;
+
+body.position.y=.85;
 group.add(body);
 
 const cabin=new THREE.Mesh(
-new THREE.BoxGeometry(1.65,.8,1.9),
-material(0x263c50)
+new THREE.BoxGeometry(1.7,.9,2),
+mat(0x263c50)
 );
-cabin.position.set(0,1.55,-.25);
+
+cabin.position.set(0,1.7,-.25);
 group.add(cabin);
 
-for(const x of [-1,1]){
-for(const z of [-1.3,1.3]){
+const wheels=[];
+
+for(const x of [-1.05,1.05]){
+
+for(const z of [-1.35,1.35]){
 
 const wheel=new THREE.Mesh(
-new THREE.CylinderGeometry(.42,.42,.25,16),
-material(0x171717)
+new THREE.CylinderGeometry(.42,.42,.3,16),
+mat(0x171717)
 );
 
 wheel.rotation.z=Math.PI/2;
-wheel.position.set(x, .45,z);
+wheel.position.set(x,.45,z);
 group.add(wheel);
+wheels.push(wheel);
 
 }
+
 }
+
+group.userData.wheels=wheels;
 
 return group;
 
 }
 
-let car=createTemporaryCar();
+let car=temporaryCar();
 scene.add(car);
 
+let speed=0;
+let steer=0;
 let wheels=[];
-let realCar=false;
 
-// بارگذاری ماشین واقعی
-status.innerHTML="در حال بارگذاری ماشین...";
+status.innerHTML="در حال بارگذاری ماشین واقعی...";
 
-const loader=new GLTFLoader();
+// بارگذاری GLB
 
-loader.load(
+new GLTFLoader().load(
+
 "./car.glb",
 
 (gltf)=>{
@@ -342,37 +578,42 @@ const center=box.getCenter(new THREE.Vector3());
 const scale=4.5/Math.max(size.x,size.y,size.z);
 
 model.scale.setScalar(scale);
+
 model.position.set(
 -center.x*scale,
 -center.y*scale,
 -center.z*scale
 );
 
-const newBox=new THREE.Box3().setFromObject(model);
-model.position.y-=newBox.min.y;
+const b=new THREE.Box3().setFromObject(model);
+model.position.y-=b.min.y;
 
 model.traverse(obj=>{
+
 if(obj.isMesh){
+
 obj.castShadow=true;
 obj.receiveShadow=true;
 
 if(/wheel|tire|tyre|چرخ/i.test(obj.name)){
 wheels.push(obj);
 }
+
 }
+
 });
 
 scene.remove(car);
 car=model;
 scene.add(car);
-realCar=true;
 
-status.innerHTML="ماشین واقعی بارگذاری شد! 🚗";
+car.position.set(0,0,0);
 
+status.innerHTML="ماشین واقعی آماده رانندگی است! 🚗";
 setTimeout(()=>status.style.display="none",2500);
 
-}catch(error){
-console.error(error);
+}catch(e){
+console.error(e);
 status.innerHTML="ماشین موقت فعال است.";
 setTimeout(()=>status.style.display="none",2500);
 }
@@ -383,54 +624,106 @@ undefined,
 
 (error)=>{
 
-console.error("Car loading error:",error);
+console.error(error);
 
-status.innerHTML="ماشین موقت فعال است؛ فایل GLB پیدا نشد.";
-setTimeout(()=>status.style.display="none",3000);
+status.innerHTML="ماشین موقت فعال است.";
+setTimeout(()=>status.style.display="none",2500);
 
 }
 
 );
 
-// کنترل‌ها
+// ---------------- CONTROLS ----------------
+
 const keys={};
 
-function setKey(key,value){
-keys[key]=value;
-}
-
 addEventListener("keydown",e=>{
-setKey(e.code,true);
+keys[e.code]=true;
 });
 
 addEventListener("keyup",e=>{
-setKey(e.code,false);
+keys[e.code]=false;
 });
 
-document.querySelectorAll("[data-key]").forEach(button=>{
+// گاز و ترمز
 
-const key=button.dataset.key;
+const gas=document.getElementById("gas");
+const brake=document.getElementById("brake");
+
+function holdButton(button,key){
 
 button.addEventListener("pointerdown",e=>{
 e.preventDefault();
 button.setPointerCapture(e.pointerId);
-setKey(key,true);
+keys[key]=true;
 });
 
-function release(e){
-e.preventDefault();
-setKey(key,false);
+function release(){
+keys[key]=false;
 }
 
 button.addEventListener("pointerup",release);
 button.addEventListener("pointercancel",release);
 button.addEventListener("lostpointercapture",release);
 
+}
+
+holdButton(gas,"ArrowUp");
+holdButton(brake,"Space");
+
+// فرمان چرخشی
+
+const wheel=document.getElementById("wheel");
+
+let steeringInput=0;
+let dragging=false;
+let lastX=0;
+
+wheel.addEventListener("pointerdown",e=>{
+
+dragging=true;
+lastX=e.clientX;
+wheel.setPointerCapture(e.pointerId);
+
 });
 
-// رانندگی
-let speed=0;
-let steer=0;
+wheel.addEventListener("pointermove",e=>{
+
+if(!dragging)return;
+
+const delta=e.clientX-lastX;
+
+steeringInput=THREE.MathUtils.clamp(
+steeringInput+delta*.025,
+-1,1
+);
+
+lastX=e.clientX;
+
+});
+
+function releaseSteering(){
+dragging=false;
+}
+
+wheel.addEventListener("pointerup",releaseSteering);
+wheel.addEventListener("pointercancel",releaseSteering);
+wheel.addEventListener("lostpointercapture",releaseSteering);
+
+// ---------------- CAMERA ----------------
+
+let cameraMode=0;
+
+document.getElementById("cameraBtn").onclick=()=>{
+
+cameraMode=(cameraMode+1)%3;
+
+document.getElementById("cameraBtn").textContent=
+"📷 دوربین "+(cameraMode+1);
+
+};
+
+// ---------------- DRIVING ----------------
 
 const clock=new THREE.Clock();
 
@@ -445,39 +738,105 @@ const backward=keys.ArrowDown||keys.KeyS;
 const left=keys.ArrowLeft||keys.KeyA;
 const right=keys.ArrowRight||keys.KeyD;
 
+// شتاب
+
 if(forward){
-speed=Math.min(speed+8*dt,25);
-}else if(backward||keys.Space){
-speed=Math.max(speed-14*dt,-6);
+
+speed=Math.min(speed+18*dt,42);
+
+}else if(backward){
+
+speed=Math.max(speed-20*dt,-12);
+
+}else if(keys.Space){
+
+speed=Math.max(speed-28*dt,0);
+
 }else{
-speed*=Math.pow(.985,dt*60);
+
+speed*=Math.pow(.992,dt*60);
+
 }
 
-const steering=(left?1:0)-(right?1:0);
+// فرمان
+
+const keyboardSteer=
+(left?1:0)-(right?1:0);
+
+const targetSteer=keyboardSteer!==0
+?keyboardSteer:steeringInput;
 
 steer=THREE.MathUtils.lerp(
-steer,steering,Math.min(1,dt*5)
+steer,targetSteer,
+Math.min(1,dt*7)
 );
 
-car.rotation.y+=steer*speed*.018*dt;
+// برگشت فرمان به مرکز
+
+if(!dragging){
+steeringInput*=Math.pow(.94,dt*60);
+}
+
+wheel.style.transform=
+`rotate(${steeringInput*150}deg)`;
+
+// چرخش خودرو
+
+car.rotation.y+=steer*speed*.035*dt;
+
+// حرکت خودرو
 
 car.position.x+=Math.sin(car.rotation.y)*speed*dt;
 car.position.z+=Math.cos(car.rotation.y)*speed*dt;
+
+// چرخ‌های ماشین موقت
+
+if(car.userData.wheels){
+
+car.userData.wheels.forEach(w=>{
+w.rotation.x+=speed*dt/.42;
+});
+
+}
 
 wheels.forEach(w=>{
 w.rotation.x+=speed*dt/.35;
 });
 
+// نمایش سرعت
+
 document.getElementById("speed").textContent=
 Math.round(Math.abs(speed)*3.6).toLocaleString("fa-IR");
 
-// دوربین دنبال‌کننده
-const offset=new THREE.Vector3(0,4,-9)
-.applyAxisAngle(new THREE.Vector3(0,1,0),car.rotation.y);
+// دوربین
+
+let offset;
+
+if(cameraMode===0){
+
+offset=new THREE.Vector3(0,4,-10);
+
+}else if(cameraMode===1){
+
+offset=new THREE.Vector3(0,1.5,1.2);
+
+}else{
+
+offset=new THREE.Vector3(0,24,-8);
+
+}
+
+offset.applyAxisAngle(
+new THREE.Vector3(0,1,0),
+car.rotation.y
+);
 
 const target=car.position.clone().add(offset);
 
-camera.position.lerp(target,1-Math.pow(.001,dt));
+camera.position.lerp(
+target,
+1-Math.pow(.001,dt)
+);
 
 camera.lookAt(
 car.position.x,
@@ -491,24 +850,25 @@ renderer.render(scene,camera);
 
 animate();
 
+status.innerHTML="به تهران خوش آمدی! 🏙️";
+setTimeout(()=>status.style.display="none",2500);
+
+// تغییر اندازه صفحه
+
 addEventListener("resize",()=>{
 
 camera.aspect=innerWidth/innerHeight;
 camera.updateProjectionMatrix();
-
 renderer.setSize(innerWidth,innerHeight);
 
 });
-
-status.innerHTML="به تهران خوش آمدی! 🏙️";
-setTimeout(()=>status.style.display="none",2500);
 
 }catch(error){
 
 console.error(error);
 
 status.style.display="block";
-status.innerHTML="خطا در اجرای بازی!<br>"+error.message;
+status.innerHTML="خطا در اجرای بازی:<br>"+error.message;
 
 }
 
